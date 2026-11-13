@@ -1,0 +1,20 @@
+## Interface: 16001
+## Title: Raynna's Bestiary
+## Notes: Standalone monster drops, item sources, quest items and farming locations.
+## Author: Andreas
+## Version: 1.0.0
+## OptionalDeps: QuestieDB, ForeverHunt
+## SavedVariablesPerCharacter: RaynnaBestiaryDB
+SettingsRegistry.lua
+Core.lua
+Theme.lua
+Widgets.lua
+LootReference.lua
+Metadata.lua
+MetadataQueries.lua
+ForeverReference.lua
+LootSources.lua
+PortraitDisplays.lua
+Portraits.lua
+Bestiary.lua
+Settings.lua
