@@ -20,7 +20,7 @@ for y in range(size):
         red, green, blue = [max(0, min(255, round(base + variation))) for base in (191, 153, 96)]
         pixels.extend((blue, green, red, 255))
 header = struct.pack('<BBBHHBHHHHBB', 0, 0, 2, 0, 0, 0, 0, 0, size, size, 32, 0x28)
-destination = ROOT / 'RaynnaBestiary/Media/RaynnaParchment.tga'
+destination = ROOT / 'RaynnaTracker/Media/RaynnaParchment.tga'
 destination.parent.mkdir(parents=True, exist_ok=True)
 destination.write_bytes(header + pixels)
 print('Generated opaque parchment:', destination)

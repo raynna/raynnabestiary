@@ -71,7 +71,7 @@ for row in rows('creature_template'):
     count += 1
 for item, name in sorted(names.items()):
     output.append('D.names[' + str(item) + ']=' + lua(name))
-(ROOT / 'RaynnaBestiary/LootReference.lua').write_text('\n'.join(output) + '\n', encoding='utf8')
+(ROOT / 'RaynnaTracker/LootReference.lua').write_text('\n'.join(output) + '\n', encoding='utf8')
 portraits.append('}')
-(ROOT / 'RaynnaBestiary/PortraitDisplays.lua').write_text('\n'.join(portraits) + '\n', encoding='utf8')
+(ROOT / 'RaynnaTracker/PortraitDisplays.lua').write_text('\n'.join(portraits) + '\n', encoding='utf8')
 print(f'Generated Classic reference: {count} creatures, {len(names)} named items')

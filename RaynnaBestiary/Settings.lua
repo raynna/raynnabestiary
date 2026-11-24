@@ -76,6 +76,9 @@ function Addon.BuildSettings()
     end, function(key, value)
         Addon.db.appearance[key] = value
         Addon.ApplyAppearance()
+        if Addon.Items and Addon.Items.db then
+            Addon.Items.ApplyAppearance()
+        end
     end)
     RaynnaModsSettingsRegistry:Register('bestiary', 'Bestiary', function(host)
         panel = host
@@ -91,7 +94,7 @@ function Addon.BuildSettings()
         end, function(value)
             Addon.db.bestiary.itemHover = value
         end)
-        percentage('Bestiary scale', -130, function()
+        percentage('NPC chooser scale', -130, function()
             return Addon.db.bestiary.scale or 1
         end, function(value)
             Addon.SetBestiaryScale(value / 100)
@@ -99,7 +102,15 @@ function Addon.BuildSettings()
         button('Open bestiary', 365, -130, function()
             SlashCmdList.RAYNNABESTIARY('')
         end)
-        label('Appearance - all installed Raynna addons', 24, -190, true)
+        percentage('Reference panel scale', -170, function()
+            return Addon.Items.db.scale or 1
+        end, function(value)
+            Addon.Items.SetScale(value / 100)
+        end, 40, 180)
+        button('Open item reference', 365, -170, function()
+            Addon.OpenItem(Addon.Items.db.lastItem or 3371, true)
+        end)
+        label('Appearance - all installed Raynna addons', 24, -210, true)
         checkbox('Parchment background texture', 24, -225, function()
             return Addon.db.appearance.paper ~= false
         end, function(value)

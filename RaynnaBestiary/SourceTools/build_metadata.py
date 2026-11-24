@@ -148,5 +148,5 @@ for entity, filename, module in [('Npc', 'classicNPCFixes.lua', 'QuestieNPCFixes
                 converted[entity_id] = record
         output.append(f'data.factions.{faction}=data.factions.{faction} or {{}}')
         output.append(f'data.factions.{faction}.{entity}=' + lua(converted))
-(ROOT / 'RaynnaBestiary/Metadata.lua').write_text('\n'.join(output) + '\n', encoding='utf8')
+(ROOT / 'RaynnaTracker/Metadata.lua').write_text('\n'.join(output) + '\n', encoding='utf8')
 print('Bundled metadata:', counts)

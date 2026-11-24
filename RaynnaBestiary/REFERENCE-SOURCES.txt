@@ -53,3 +53,40 @@ Standalone Bestiary source and build tools:
 https://github.com/raynna/raynnabestiary
 This package has no required Tracker dependency. Rebuild generators from the
 repository tools directory. Percentages and coverage retain the notices above.
+
+Forever metadata refresh: 2026-11-15
+QuestieDB 1.1.1 Forever release:
+https://github.com/Questie/QuestieDB/releases/tag/v1.1.1
+Rebuild: tools/build_metadata.py --source tools/data-cache/questiedb-1.1.1/QuestieDB
+Metadata.lua records the exact input TOC SHA-256. Both standalone packages bundle
+the same snapshot. NPC lookup includes Forever item-to-NPC source relationships;
+explicit Forever loot corrections override Classic matches. Missing percentages
+remain unknown. Existing Classic-only rates remain unverified fallback references.
+Optional newer QuestieDB fields are preferred; new item IDs require a bundled refresh.
+No website requests occur in game and player loot history is never synthesized.
+
+2.0.0 incorporates Codex ForeverRecipes, Relations and Locations snapshots unchanged.
+See LICENSE-ForeverRecipes.txt. Existing provenance headers retain source versions.
+Item tools share Bestiary loot/metadata/portrait datasets rather than loading duplicates.
+
+2026-11-21 update (Bestiary 2.1.0):
+QuestieDB 1.1.3 Forever: https://github.com/Questie/QuestieDB/releases/tag/v1.1.3
+NorgannonDB revision cae6d644952b9b12fbd1e3a500211893336cc219:
+https://github.com/zmarotrix/NorgannonDB
+34 credited dungeon/raid records, 1475 boss-item relationships; no imported probabilities.
+DungeonJournal by Exehn, compiled by Maro; upstream credit/terms in NOTICE-NorgannonDB.md.
+Rebuild with tools/build_bestiary_dungeons.py. Reference snapshot, not guaranteed complete.
+Curated NPC level/zone supplements checked against:
+https://warcraft.wiki.gg/wiki/Broodwidow_(Ruins_of_Lordaeron)
+https://warcraft.wiki.gg/wiki/Ghostly_Citizen_(Ruins_of_Lordaeron)
+https://efficient.games/wowf/npcs/id256040
+https://foreverdroprate.com/zones/16611 (NPC-linked zone sightings, not probabilities)
+Rotmender's Gloves: https://www.wowhead.com/forever/item=286979/rotmenders-gloves
+Only factual summaries imported. No copied wiki prose, icons or tiny-sample rates.
+
+2.1.1: Additional Forever NPC display mappings from installed DungeonJournal 2.1.0
+by Exehn, numeric facts only; tools/build_forever_portraits.py records input SHA256.
+No third-party artwork or runtime bundled.
+Additional levels checked 2026-11-21:
+https://warcraft.wiki.gg/wiki/Ragged_Ghoul_(Ruins_of_Lordaeron)
+https://warcraft.wiki.gg/wiki/Mangled_Cadaver_(Ruins_of_Lordaeron)

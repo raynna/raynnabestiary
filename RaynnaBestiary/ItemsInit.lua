@@ -1,0 +1,3 @@
+local _, Addon = ...
+-- Item tools share the parent reference databases and portrait cache.
+Addon.Items = setmetatable({}, { __index = Addon })

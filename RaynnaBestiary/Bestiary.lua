@@ -5,6 +5,10 @@ local _, Addon = ...
 local bestiaryFrame, selectedSubject, showingPreview, isPinned, scrollOffset = nil, nil, false, false, 0
 local sourceRows, visibleEntries, requestedItems = {}, {}, {}
 local itemLockedForAlt = false
+function Addon.ResetBestiaryHoverSelection()
+    itemLockedForAlt = false
+    isPinned = false
+end
 local rowTooltipLevel, rowTooltipStrata
 
 -- Tooltip ownership and layering
@@ -42,6 +46,14 @@ local function button(parent, label, x, y, width, callback)
     return control
 end
 
+local function updateLootHint(row, hovered)
+    local clickable = hovered and row.entry and selectedSubject and not selectedSubject.itemID
+    row.actionHint:SetShown(not not clickable)
+    if selectedSubject and not selectedSubject.itemID then
+        row.name:SetWidth(181)
+    end
+end
+
 -- Render the selected NPC or item and its visible source rows
 local function refreshWindow()
     if not bestiaryFrame or not selectedSubject then
@@ -73,7 +85,7 @@ local function refreshWindow()
             or (
                 'Level '
                 .. Addon.LevelText(selectedSubject)
-                .. (selectedSubject.foreverReference and '  /  Forever reference' or '  /  Classic reference')
+                .. (selectedSubject.mixedReference and ' / Forever + Classic' or selectedSubject.foreverReference and ' / Forever reference' or ' / Classic reference')
                 .. (showingPreview and '  /  Preview' or '')
             )
     )
@@ -81,11 +93,18 @@ local function refreshWindow()
         selectedSubject.itemID
                 and 'Sources: Classic DB / source metadata / Forever records\nCoverage varies; ? = unknown chance'
             or (
-                selectedSubject.foreverReference
-                    and 'Icy Veins Forever / 2026-11-13\nPartial snapshot; * conditional chance'
+                selectedSubject.mixedReference
+                    and 'Forever sources + Classic fallback rates\nClassic % unverified for Forever; ? unknown'
+                or selectedSubject.foreverReference and 'Icy Veins Forever / 2026-11-13\nPartial snapshot; * conditional chance'
                 or 'cMaNGOS Classic 1.12 - not verified for Forever\n* Conditional drop chance'
             )
     )
+    bestiaryFrame.mapButton:SetShown(not selectedSubject.itemID)
+    local mapped = selectedSubject.npcID
+        and Addon.Items
+        and #Addon.Items.SourceLocations(selectedSubject.npcID) > 0
+    bestiaryFrame.mapButton:SetEnabled(not not mapped)
+    bestiaryFrame.back:SetShown(bestiaryFrame.returnToItem ~= nil)
     bestiaryFrame.pin:SetText(isPinned and 'Unpin' or 'Pin')
     visibleEntries = {}
     for id, drop in pairs(selectedSubject.drops or {}) do
@@ -108,7 +127,7 @@ local function refreshWindow()
             or 'No source data for this creature ID.\nYour personal loot log is not used here.'
     )
     local shownRows = math.max(1, math.min(7, #visibleEntries))
-    local rowHeight = selectedSubject.itemID and 36 or 24
+    local rowHeight = selectedSubject.itemID and 36 or 32
     bestiaryFrame:SetHeight(116 + questSpace + shownRows * rowHeight)
     bestiaryFrame.footer:ClearAllPoints()
     bestiaryFrame.footer:SetPoint('BOTTOMLEFT', 10, 8)
@@ -120,6 +139,7 @@ local function refreshWindow()
         row.location:SetShown(not not selectedSubject.itemID)
         row.entry = visibleEntries[scrollOffset + i]
         row:SetShown(row.entry ~= nil)
+        row.actionHint:Hide()
         if row.entry then
             local item, sourceRecord = row.entry.id, row.entry.drop
             if selectedSubject.itemID then
@@ -157,6 +177,7 @@ local function refreshWindow()
                 row.name:ClearAllPoints()
                 row.name:SetPoint('TOPLEFT', 24, -5)
                 row.name:SetWidth(181)
+                updateLootHint(row, row:IsMouseOver())
                 local name, link, quality, _, _, _, _, _, _, icon, _, classID
                 if C_Item and C_Item.GetItemInfo then
                     name, link, quality, _, _, _, _, _, _, icon, _, classID = C_Item.GetItemInfo(item)
@@ -186,11 +207,30 @@ local function refreshWindow()
     end
 end
 
+-- A return point preserves the selected monster, scroll and pin state.
+function Addon.CaptureMonsterView()
+    local subject, preview, pinned, offset = selectedSubject, showingPreview, isPinned, scrollOffset
+    return subject and subject.name,
+        function()
+            selectedSubject, showingPreview, isPinned, scrollOffset = subject, preview, pinned, offset
+            refreshWindow()
+            bestiaryFrame:Show()
+        end
+end
+
 -- Open, position and raise the window
 function Addon.ShowBestiary(monster, demo, pin)
+    if Addon.Items and Addon.Items.frame and not monster.itemID then
+        itemLockedForAlt = false
+        selectedSubject, showingPreview, isPinned = monster, not not demo, false
+        bestiaryFrame:Hide()
+        Addon.Items.ShowNPC(monster, pin, false)
+        return
+    end
     if not bestiaryFrame then
         return
     end
+    bestiaryFrame.manualOpen, bestiaryFrame.returnToItem = false, nil
     selectedSubject, showingPreview, isPinned, scrollOffset = monster, not not demo, not not pin, 0
     Addon.HideDrops(true)
     refreshWindow()
@@ -212,6 +252,10 @@ function Addon.ShowBestiary(monster, demo, pin)
     bestiaryFrame:SetFrameLevel(level + 20)
     bestiaryFrame:Show()
 end
+function Addon.OpenSourceNPC(entry)
+    Addon.Items.NavigateNPC(entry)
+end
+
 function Addon.BestiaryDemo()
     Addon.ShowBestiary(Addon.ReferenceMonster(587), true, true)
 end
@@ -235,6 +279,12 @@ local function showHoveredItem(tooltipItemID)
     -- Item post-calls can run before the tooltip is shown or GetItem is updated.
     local id = isReadableValue(tooltipItemID) and tonumber(tooltipItemID) or nil
     if not id then
+        if GameTooltip.GetUnit then
+            local ok, _, unit = pcall(GameTooltip.GetUnit, GameTooltip)
+            if ok and isReadableValue(unit) and type(unit) == 'string' then
+                return false
+            end
+        end
         if not GameTooltip:IsShown() then
             return false
         end
@@ -247,9 +297,24 @@ local function showHoveredItem(tooltipItemID)
     if not id then
         return false
     end
+    local exactLink
+    local ok, _, link = pcall(GameTooltip.GetItem, GameTooltip)
+    if
+        ok
+        and isReadableValue(link)
+        and type(link) == 'string'
+        and tonumber(link:match('item:(%d+)')) == id
+    then
+        exactLink = link
+    end
     itemLockedForAlt = true
     if not bestiaryFrame:IsShown() or not selectedSubject or selectedSubject.itemID ~= id then
-        Addon.ShowBestiary(Addon.ReferenceItem(id), false, false)
+        if Addon.OpenItem then
+            bestiaryFrame:Hide()
+            Addon.OpenItem(exactLink or id, false)
+        else
+            Addon.ShowBestiary(Addon.ReferenceItem(id), false, false)
+        end
     end
     return true
 end
@@ -257,21 +322,50 @@ local function showMouseoverCreature()
     if Addon.db.bestiary.npcHover == false then
         return
     end
-    if isPinned or itemLockedForAlt or bestiaryFrame:IsMouseOver() or not IsAltKeyDown() then
+    if
+        (
+            Addon.Items
+            and Addon.Items.frame
+            and Addon.Items.frame:IsShown()
+            and (Addon.Items.pinned or Addon.Items.frame:IsMouseOver())
+        )
+        or isPinned
+        or itemLockedForAlt
+        or bestiaryFrame:IsMouseOver()
+        or not IsAltKeyDown()
+    then
         return
     end
-    local guid, name, level = UnitGUID('mouseover'), UnitName('mouseover'), UnitLevel('mouseover')
-    if not isReadableValue(guid) or not isReadableValue(name) or not isReadableValue(level) then
+    local unit = 'mouseover'
+    if GameTooltip.GetUnit then
+        local ok, _, token = pcall(GameTooltip.GetUnit, GameTooltip)
+        if ok and isReadableValue(token) and type(token) == 'string' then
+            unit = token
+        end
+    end
+    local function read(api)
+        local ok, value = pcall(api, unit)
+        if ok and isReadableValue(value) then
+            return value
+        end
+    end
+    local guid, name, level = read(UnitGUID), read(UnitName), read(UnitLevel)
+    if type(guid) ~= 'string' or not (guid:match('^Creature%-') or guid:match('^Vehicle%-')) then
         return
     end
-    if type(guid) ~= 'string' or not guid:match('^Creature%-') or not name then
-        return
-    end
-    local id = tonumber(guid:match('^Creature%-%d+%-%d+%-%d+%-%d+%-(%d+)%-'))
+    local id = tonumber(guid:match('^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)%-'))
     if not id then
         return
     end
-    local monster = Addon.ReferenceMonster(id, name, type(level) == 'number' and level > 0 and level or nil)
+    name = type(name) == 'string' and name or nil
+    local shared = Addon.Items
+    local liveLevel = type(level) == 'number' and level > 0 and level or nil
+    if shared and shared.frame and shared.frame:IsShown() and shared.currentNPC
+        and shared.currentNPC.npcID == id and not showingPreview
+        and (not liveLevel or shared.currentNPC.minLevel == liveLevel) then
+        return
+    end
+    local monster = Addon.ReferenceMonster(id, name, liveLevel, true)
     if
         bestiaryFrame:IsShown()
         and selectedSubject
@@ -280,6 +374,9 @@ local function showMouseoverCreature()
         and not showingPreview
     then
         return
+    end
+    if Addon.Items and Addon.Items.frame and not Addon.Items.pinned then
+        Addon.Items.frame:Hide()
     end
     Addon.ShowBestiary(monster, false, false)
 end
@@ -325,6 +422,30 @@ function Addon.BuildBestiary()
     end)
     bestiaryFrame.pin:SetHeight(18)
     bestiaryFrame.close:SetHeight(18)
+    bestiaryFrame.back = button(bestiaryFrame, 'Back', 157, -6, 46, function()
+        local restore = bestiaryFrame.returnToItem
+        bestiaryFrame:Hide()
+        if restore then
+            restore()
+        end
+    end)
+    bestiaryFrame.back:SetHeight(18)
+    bestiaryFrame.mapButton = button(bestiaryFrame, 'Show on map', 188, -64, 100, function()
+        if not selectedSubject or not selectedSubject.npcID then
+            return
+        end
+        local ok, message = Addon.Items.ShowSourceLocation({
+            npcID = selectedSubject.npcID,
+            title = selectedSubject.name,
+            levelText = 'Lv ' .. Addon.LevelText(selectedSubject),
+        })
+        if ok then
+            bestiaryFrame:Hide()
+        else
+            bestiaryFrame.footer:SetText(message)
+        end
+    end)
+    bestiaryFrame.mapButton:SetHeight(18)
     bestiaryFrame.portrait = CreateFrame('Frame', nil, bestiaryFrame)
     bestiaryFrame.portrait:SetSize(32, 32)
     bestiaryFrame.portrait:SetPoint('TOPLEFT', 10, -31)
@@ -347,6 +468,10 @@ function Addon.BuildBestiary()
         row:SetSize(278, 24)
         row:SetPoint('TOPLEFT', 10, -83 - (i - 1) * 24)
         row:SetHighlightTexture('Interface\\QuestFrame\\UI-QuestTitleHighlight', 'ADD')
+        local stripe = row:CreateTexture(nil, 'BACKGROUND')
+        stripe:SetAllPoints(row)
+        stripe:SetColorTexture(1, 0.86, 0.6, i % 2 == 0 and 0.035 or 0)
+
         row.portrait = CreateFrame('Frame', nil, row)
         row.portrait:SetSize(28, 28)
         row.portrait:SetPoint('TOPLEFT', 0, -4)
@@ -357,9 +482,27 @@ function Addon.BuildBestiary()
         row.detail = createLabel(row, 10, 208, -5, 65)
         row.detail:SetTextColor(unpack(Addon.Theme.text))
         row.detail:SetJustifyH('RIGHT')
+        row.actionHint = createLabel(row, 10, 183, -19, 90)
+        row.actionHint:SetJustifyH('RIGHT')
+        row.actionHint:SetText('View item >')
+        row.actionHint:SetTextColor(0.55, 0.88, 1)
+        row.actionHint:Hide()
         row.location = createLabel(row, 9, 0, -21, 273)
         row.location:SetTextColor(unpack(Addon.Theme.muted))
+        row:SetScript('OnClick', function(self)
+            if not self.entry or not selectedSubject or selectedSubject.itemID then
+                return
+            end
+            local codex = _G.RaynnaCodexAPI
+            if codex and type(codex.OpenItem) == 'function' then
+                hideRowTooltip()
+                codex.OpenItem(self.entry.id, bestiaryFrame)
+            else
+                Addon.ShowBestiary(Addon.ReferenceItem(self.entry.id), false, true)
+            end
+        end)
         row:SetScript('OnEnter', function(self)
+            updateLootHint(self, true)
             if self.entry then
                 if not rowTooltipLevel then
                     rowTooltipLevel = GameTooltip:GetFrameLevel()
@@ -421,12 +564,28 @@ function Addon.BuildBestiary()
                         true
                     )
                 end
+                if not selectedSubject.itemID then
+                    local codex = _G.RaynnaCodexAPI
+                    GameTooltip:AddLine(
+                        codex
+                                and type(codex.OpenItem) == 'function'
+                                and 'Click for item uses, recipes and sources'
+                            or 'Click to view item sources',
+                        0.4,
+                        0.9,
+                        0.6,
+                        true
+                    )
+                end
                 GameTooltip:Show()
                 GameTooltip:SetFrameStrata('TOOLTIP')
                 GameTooltip:SetFrameLevel(bestiaryFrame:GetFrameLevel() + 20)
             end
         end)
-        row:SetScript('OnLeave', hideRowTooltip)
+        row:SetScript('OnLeave', function(self)
+            updateLootHint(self, false)
+            hideRowTooltip()
+        end)
         sourceRows[i] = row
     end
     bestiaryFrame.empty = createLabel(bestiaryFrame, 10, 10, -85, 278)
@@ -461,7 +620,13 @@ function Addon.BuildBestiary()
         if not IsAltKeyDown() then
             itemLockedForAlt = false
         end
-        if isPinned or bestiaryFrame:IsMouseOver() or bestiaryFrame.scrollbar.dragging or IsAltKeyDown() then
+        if
+            isPinned
+            or bestiaryFrame.manualOpen
+            or bestiaryFrame:IsMouseOver()
+            or bestiaryFrame.scrollbar.dragging
+            or IsAltKeyDown()
+        then
             return
         end
         bestiaryFrame:Hide()
@@ -489,6 +654,13 @@ function Addon.BuildBestiary()
         end
     end)
     if TooltipDataProcessor and Enum and Enum.TooltipDataType then
+        if Enum.TooltipDataType.Unit then
+            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip)
+                if tooltip == GameTooltip then
+                    showMouseoverCreature()
+                end
+            end)
+        end
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
             if tooltip == GameTooltip then
                 showHoveredItem(data and data.id)
@@ -509,14 +681,25 @@ function Addon.BuildBestiary()
         elseif message == 'hide' then
             isPinned = false
             bestiaryFrame:Hide()
-        elseif message == 'demo' or not selectedSubject then
+            if Addon.Items and Addon.Items.frame then
+                Addon.Items.pinned = false
+                Addon.Items.manualOpen = false
+                Addon.Items.frame:Hide()
+            end
+            if Addon.browser then
+                Addon.browser:Hide()
+            end
+        elseif message == 'demo' then
             Addon.BestiaryDemo()
         else
-            Addon.ShowBestiary(selectedSubject, showingPreview, true)
+            Addon.OpenBrowser(nil, true)
         end
     end
     bestiaryFrame:Hide()
     Addon.SetBestiaryScale = function(value)
+        if Addon.browser then
+            Addon.browser:SetScale(math.max(0.4, math.min(1.8, value)))
+        end
         Addon.db.bestiary.scale = math.max(0.4, math.min(1.8, value))
         bestiaryFrame:SetScale(Addon.db.bestiary.scale)
     end

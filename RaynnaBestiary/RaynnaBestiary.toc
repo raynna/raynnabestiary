@@ -1,8 +1,9 @@
 ## Interface: 16001
+## IconTexture: Interface\AddOns\RaynnaBestiary\AddonIcon
 ## Title: Raynna's Bestiary
 ## Notes: Standalone monster drops, item sources, quest items and farming locations.
 ## Author: Andreas
-## Version: 1.0.0
+## Version: 2.4.7
 ## OptionalDeps: QuestieDB, ForeverHunt
 ## SavedVariablesPerCharacter: RaynnaBestiaryDB
 SettingsRegistry.lua
@@ -14,7 +15,24 @@ Metadata.lua
 MetadataQueries.lua
 ForeverReference.lua
 LootSources.lua
+DungeonReference.lua
+ForeverSources.lua
 PortraitDisplays.lua
+ForeverPortraits.lua
 Portraits.lua
 Bestiary.lua
+Browser.lua
 Settings.lua
+ForeverRecipes.lua
+Relations.lua
+Locations.lua
+ItemsInit.lua
+ItemsRelationships.lua
+SpawnOverlay.lua
+ItemsMap.lua
+ItemsDescriptions.lua
+ItemsData.lua
+ItemsTheme.lua
+ItemsUI.lua
+ItemsCore.lua
+VersionCheck.lua

@@ -1,0 +1,7 @@
+## Interface: 16001
+## IconTexture: Interface\AddOns\RaynnaCodex\AddonIcon
+## Title: Raynna's Codex (Bestiary migration)
+## Notes: Legacy item history loader; item tools are part of Bestiary.
+## Version: 1.0.0
+## Dependencies: RaynnaBestiary
+## SavedVariablesPerCharacter: RaynnaCodexDB

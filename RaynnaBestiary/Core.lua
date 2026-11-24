@@ -12,10 +12,10 @@ local function copy(value)
     return result
 end
 function Addon.LevelText(row)
-    if not row.minLevel then
+    if type(row.minLevel) ~= 'number' or row.minLevel <= 0 then
         return '?'
     end
-    if not row.maxLevel or row.minLevel == row.maxLevel then
+    if not row.maxLevel or row.maxLevel <= row.minLevel then
         return tostring(row.minLevel)
     end
     return row.minLevel .. '-' .. row.maxLevel
@@ -49,8 +49,10 @@ events:SetScript('OnEvent', function(_, event, name)
         end
         Addon.db.bestiary = Addon.db.bestiary or {}
         Addon.db.appearance = Addon.db.appearance or {}
+        Addon.WarmLootIndex()
         Addon.PreloadTrackerPortraits()
         Addon.BuildBestiary()
+        Addon.InitializeItems()
         Addon.BuildSettings()
     end
 end)

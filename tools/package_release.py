@@ -17,11 +17,15 @@ for folder in ('RaynnaTracker', 'RaynnaBestiary', 'TalentGuide'):
     media = ['RaynnaParchment']
     if folder != 'TalentGuide':
         media += ['Horizontal', 'Vertical', 'DiagonalDown', 'DiagonalUp']
+    if folder == 'RaynnaBestiary':
+        media += ['SpawnGlow']
     files += [addon / 'Media' / (name + '.tga') for name in media]
     files += [addon / name for name in ('GPL-3.0.txt','LICENSE-ClassicDB.txt',
-                'LICENSE-QuestieDB.txt','REFERENCE-SOURCES.txt','SOURCES.md') if (addon / name).exists()]
+                'LICENSE-QuestieDB.txt','LICENSE-ForeverRecipes.txt','NOTICE-NorgannonDB.md','REFERENCE-SOURCES.txt','SOURCES.md','README.md') if (addon / name).exists()]
     if folder == 'RaynnaTracker':
         files.append(ROOT / 'ForeverHunt/ForeverHunt.toc')
+    if folder == 'RaynnaBestiary':
+        files.append(ROOT / 'RaynnaCodex/RaynnaCodex.toc')
     assert all(p.is_file() for p in files), 'Missing required runtime file'
     out = ROOT / 'dist' / f'{folder}-{version}-CurseForge.zip'
     out.parent.mkdir(exist_ok=True)
